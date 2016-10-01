@@ -1,49 +1,81 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using System.Xml.Linq;
+using WilderMinds.RssSyndication.Channel;
 
 namespace WilderMinds.RssSyndication
 {
   public class Feed
   {
-    public string Description { get; set; }
-    public Uri Link { get; set; }
-    public string Title { get; set; }
-    public string Copyright { get; set; }
+    /// <summary> 
+    /// Required: The name of the channel (usually the name of the website).
+    /// </summary>
+    public string Title { get; }
+
+    /// <summary> 
+    /// Required: The URL to the website corresponding to the channel.
+    /// </summary>
+    public Uri Link { get; }
+
+    /// <summary> 
+    /// Required: A phrase or sentence describing the channel.
+    /// </summary>
+    public string Description { get; }
+
+    public OptionalChannelInformation ChannelInformation { get; set; }
 
     public ICollection<Item> Items { get; set; } = new List<Item>();
+
+    /// <summary>
+    /// Creates a new <see cref="Feed"/> with the channel information required by the RSS 2.0 specification.
+    /// </summary>
+    /// <param name="title">The name of the channel (usually the name of the website).</param>
+    /// <param name="link">The URL to the website corresponding to the channel.</param>
+    /// <param name="description">A phrase or sentence describing the channel.</param>
+    public Feed(string title, Uri link, string description)
+    {
+      Guard.CheckNullOrWhitespace(nameof(title), title);
+      Guard.CheckNullOrWhitespace(nameof(description), description);
+      Guard.CheckNull(nameof(link), link);
+
+      Title = title;
+      Link = link;
+      Description = description;
+    }
 
     public string Serialize()
     {
       var doc = new XDocument(new XElement("rss"));
       doc.Root.Add(new XAttribute("version", "2.0"));
+      
+      var channel = CreateChannel(); 
 
-      var channel = new XElement("channel");
-      channel.Add(new XElement("title", this.Title));
-      channel.Add(new XElement("link", this.Link.AbsoluteUri));
-      channel.Add(new XElement("description", this.Description));
-      channel.Add(new XElement("copyright", this.Copyright));
       doc.Root.Add(channel);
 
       foreach (var item in Items)
       {
-        var itemElement = new XElement("item");
-        itemElement.Add(new XElement("title", item.Title));
-        itemElement.Add(new XElement("link", item.Link.AbsoluteUri));
-        itemElement.Add(new XElement("description", item.Body));
-        if (item.Author != null) itemElement.Add(new XElement("author", $"{item.Author.Email} ({item.Author.Name})"));
-        foreach (var c in item.Categories) itemElement.Add(new XElement("category", c));
-        if (item.Comments != null) itemElement.Add(new XElement("comments", item.Comments.AbsoluteUri));
-        if (!string.IsNullOrWhiteSpace(item.Permalink)) itemElement.Add(new XElement("guid", item.Permalink));
-        var dateFmt = string.Concat(item.PublishDate.ToString("ddd',' d MMM yyyy HH':'mm':'ss"), " ", item.PublishDate.ToString("zzzz").Replace(":", ""));
-        if (item.PublishDate != DateTime.MinValue) itemElement.Add(new XElement("pubDate", dateFmt));
-        channel.Add(itemElement);
+        XElement itemElement;
+        if (item.TrySerialize(out itemElement))
+        {
+          channel.Add(itemElement);
+        }
       }
 
       return doc.ToString();
+    }
 
+    private XElement CreateChannel()
+    {
+      var channel = new XElement("channel");
+
+      // Add the required elements.
+      channel.Add(new XElement("title", this.Title));
+      channel.Add(new XElement("link", this.Link.AbsoluteUri));
+      channel.Add(new XElement("description", this.Description));
+      
+      ChannelInformation?.AddOptionalElements(channel);
+
+      return channel;
     }
   }
 }

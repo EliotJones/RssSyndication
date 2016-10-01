@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace WilderMinds.RssSyndication
+﻿namespace WilderMinds.RssSyndication
 {
   public class Author
   {

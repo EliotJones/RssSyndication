@@ -1,10 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Threading.Tasks;
-using System.Xml.Linq;
 using WilderMinds.RssSyndication;
+using WilderMinds.RssSyndication.Channel;
 using Xunit;
 
 namespace RssSyndication.Tests
@@ -14,91 +11,116 @@ namespace RssSyndication.Tests
     [Fact]
     public void FeedIsCreated()
     {
-      var feed = new Feed()
-      {
-        Title = "Shawn Wildermuth's Blog",
-        Description = "My Favorite Rants and Raves",
-        Link = new Uri("http://wildermuth.com/feed"),
-        Copyright = "(c) 2016"
-      };
+      var feed = new Feed(TestData.FeedTitle, TestData.FeedUrl, TestData.FeedDescription)
+        {
+          ChannelInformation = new OptionalChannelInformation
+          {
+            Copyright = TestData.FeedCopyright
+          }
+        };
 
       Assert.NotNull(feed);
-      Assert.True(feed.Title == "Shawn Wildermuth's Blog");
-      Assert.True(feed.Description == "My Favorite Rants and Raves");
-      Assert.True(feed.Link == new Uri("http://wildermuth.com/feed"));
-      Assert.True(feed.Copyright == "(c) 2016");
+      Assert.Equal(feed.Title, TestData.FeedTitle);
+      Assert.Equal(feed.Description, TestData.FeedDescription);
+      Assert.Equal(feed.Link, TestData.FeedUrl);
+      Assert.Equal(feed.ChannelInformation.Copyright, TestData.FeedCopyright);
     }
 
-    Feed CreateTestFeed()
-    {
-      var feed = new Feed()
-      {
-        Title = "Shawn Wildermuth's Blog",
-        Description = "My Favorite Rants and Raves",
-        Link = new Uri("http://wildermuth.com/feed"),
-        Copyright = "(c) 2016"
-      };
-
-      var item1 = new Item()
-      {
-        Title = "Foo Bar",
-        Body = "<p>Foo bar</p>",
-        Link = new Uri("http://foobar.com/item#1"),
-        Permalink = "http://foobar.com/item#1",
-        PublishDate = DateTime.UtcNow,
-        Author = new Author() { Name = "Shawn Wildermuth", Email = "shawn@wildermuth.com" }
-      };
-
-      item1.Categories.Add("aspnet");
-      item1.Categories.Add("foobar");
-
-      item1.Comments = new Uri("http://foobar.com/item1#comments");
-
-      feed.Items.Add(item1);
-
-      var item2 = new Item()
-      {
-        Title = "Quux",
-        Body = "<p>Quux</p>",
-        Link = new Uri("http://quux.com/item#1"),
-        Permalink = "http://quux.com/item#1",
-        PublishDate = DateTime.UtcNow,
-        Author = new Author() { Name = "Shawn Wildermuth", Email = "shawn@wildermuth.com" }
-      };
-
-      item1.Categories.Add("aspnet");
-      item1.Categories.Add("quux");
-
-      feed.Items.Add(item2);
-
-      return feed;
-    }
+    
 
     [Fact]
     public void FeedAddsItems()
     {
-      var feed = CreateTestFeed();
+      var feed = TestData.CreateTestFeed();
 
       Assert.NotNull(feed.Items.First());
-      Assert.True(feed.Items.First().Title == "Foo Bar");
-      Assert.True(feed.Items.ElementAt(1).Title == "Quux");
-      Assert.True(feed.Items.First().Author.Name == "Shawn Wildermuth");
+      Assert.Equal(feed.Items.First().Title, "Foo Bar");
+      Assert.Equal(feed.Items.ElementAt(1).Title, "Quux");
+      Assert.Equal(feed.Items.First().Author.Name, "Shawn Wildermuth");
     }
 
     [Fact]
-    public void CreatesValidRss()
+    public void CreatesValidRssWithItems()
     {
-      var feed = CreateTestFeed();
+      var feed = TestData.CreateTestFeed();
 
-      var rss = feed.Serialize();
-      Debug.Write(rss);
-      var doc = XDocument.Parse(rss);
+      var doc = TestData.ReadSerialized(feed);
 
       Assert.NotNull(doc);
       var item = doc.Descendants("item").FirstOrDefault();
       Assert.NotNull(item);
       Assert.True(item.Element("title").Value == "Foo Bar", "First Item was correct");
+    }
 
+    public void CreatesValidRssNoChildItems()
+    {
+      var feed = new Feed(TestData.FeedTitle, TestData.FeedUrl, TestData.FeedDescription);
+
+      var doc = TestData.ReadSerialized(feed);
+
+      Assert.Equal("rss", doc.Root.Name);
+      
+      var version = doc.Root.Attribute("version");
+
+      Assert.Equal("2.0", version.Value);
+
+      var feedElement = doc.Root.Descendants().Single().Name;
+
+      Assert.Equal("channel", feedElement);
+
+      Assert.Empty(doc.Descendants("item"));
+      
+      Assert.Empty(doc.Descendants("copyright"));
+    }
+
+    [Fact]
+    public void CreatesValidRssContainingTitleLinkDescription()
+    {
+      var feed = new Feed(TestData.FeedTitle, TestData.FeedUrl, TestData.FeedDescription);
+
+      var doc = TestData.ReadSerialized(feed);
+
+      var channel = doc.Descendants("channel").Single();
+
+      var title = channel.Descendants("title").Single();
+      var link = channel.Descendants("link").Single();
+      var description = channel.Descendants("description").Single();
+
+      Assert.Equal(TestData.FeedTitle, title.Value);
+      Assert.Equal(TestData.FeedUrl.AbsoluteUri, link.Value);
+      Assert.Equal(TestData.FeedDescription, description.Value);
+    }
+
+    [Fact]
+    public void Create_ChannelLinkRequired()
+    {      
+      Assert.Throws<ArgumentNullException>(() => new Feed(TestData.FeedTitle, null, TestData.FeedDescription));
+    }
+
+    [Fact]
+    public void Create_ChannelTitleRequired()
+    {
+      Assert.Throws<ArgumentNullException>(() => new Feed(null, TestData.FeedUrl, TestData.FeedDescription));
+      Assert.Throws<ArgumentException>(() => new Feed(string.Empty, TestData.FeedUrl, TestData.FeedDescription));
+      Assert.Throws<ArgumentException>(() => new Feed("    ", TestData.FeedUrl, TestData.FeedDescription));
+    }
+
+    [Fact]
+    public void Create_ChannelDescriptionRequired()
+    {
+      Assert.Throws<ArgumentNullException>(() => new Feed(TestData.FeedTitle, TestData.FeedUrl, null));
+      Assert.Throws<ArgumentException>(() => new Feed(TestData.FeedTitle, TestData.FeedUrl, string.Empty));
+      Assert.Throws<ArgumentException>(() => new Feed(TestData.FeedTitle, TestData.FeedUrl, "\t"));
+    }
+
+    [Fact]
+    public void ChannelCopyrightOptional()
+    {
+      var feed = new Feed(TestData.FeedTitle, TestData.FeedUrl, TestData.FeedDescription);
+
+      var rss = feed.Serialize();
+
+      Assert.NotEmpty(rss);
     }
   }
 }
