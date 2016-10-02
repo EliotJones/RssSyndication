@@ -96,8 +96,13 @@ namespace WilderMinds.RssSyndication.Channel
         {
         }
 
-        internal XElement Serialize()
+        internal XElement Serialize(FeedType type)
         {
+            if (type == FeedType.Atom1)
+            {
+                return new XElement(Feed.AtomNamespace + "logo", Url.AbsoluteUri);
+            }
+
             var image = new XElement("image");
 
             image.Add(new XElement("url", Url.AbsoluteUri));

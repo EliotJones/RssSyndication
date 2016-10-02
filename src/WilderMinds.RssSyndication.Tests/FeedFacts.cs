@@ -13,20 +13,18 @@ namespace RssSyndication.Tests
     {
       var feed = new Feed(TestData.FeedTitle, TestData.FeedUrl, TestData.FeedDescription)
         {
-          ChannelInformation = new OptionalChannelInformation
+          OptionalInformation = new OptionalInformation
           {
             Copyright = TestData.FeedCopyright
           }
         };
 
       Assert.NotNull(feed);
-      Assert.Equal(feed.Title, TestData.FeedTitle);
-      Assert.Equal(feed.Description, TestData.FeedDescription);
-      Assert.Equal(feed.Link, TestData.FeedUrl);
-      Assert.Equal(feed.ChannelInformation.Copyright, TestData.FeedCopyright);
+      Assert.Equal(TestData.FeedTitle, feed.Title);
+      Assert.Equal(TestData.FeedDescription, feed.Description);
+      Assert.Equal(TestData.FeedUrl, feed.Link);
+      Assert.Equal(TestData.FeedCopyright, feed.OptionalInformation.Copyright);
     }
-
-    
 
     [Fact]
     public void FeedAddsItems()
@@ -34,9 +32,9 @@ namespace RssSyndication.Tests
       var feed = TestData.CreateTestFeed();
 
       Assert.NotNull(feed.Items.First());
-      Assert.Equal(feed.Items.First().Title, "Foo Bar");
-      Assert.Equal(feed.Items.ElementAt(1).Title, "Quux");
-      Assert.Equal(feed.Items.First().Author.Name, "Shawn Wildermuth");
+      Assert.Equal("Foo Bar", feed.Items.First().Title);
+      Assert.Equal("Quux", feed.Items.ElementAt(1).Title);
+      Assert.Equal("Shawn Wildermuth", feed.Items.First().Author.Name);
     }
 
     [Fact]
@@ -47,9 +45,11 @@ namespace RssSyndication.Tests
       var doc = TestData.ReadSerialized(feed);
 
       Assert.NotNull(doc);
+
       var item = doc.Descendants("item").FirstOrDefault();
+
       Assert.NotNull(item);
-      Assert.True(item.Element("title").Value == "Foo Bar", "First Item was correct");
+      Assert.Equal("Foo Bar", item.Element("title").Value);
     }
 
     public void CreatesValidRssNoChildItems()

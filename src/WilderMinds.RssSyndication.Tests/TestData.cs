@@ -17,7 +17,7 @@ namespace RssSyndication.Tests
     {
       var feed = new Feed(FeedTitle, FeedUrl, FeedDescription)
       {
-        ChannelInformation = new OptionalChannelInformation
+        OptionalInformation = new OptionalInformation
         {
           Copyright = FeedCopyright
         } 

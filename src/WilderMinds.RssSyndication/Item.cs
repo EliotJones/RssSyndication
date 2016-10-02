@@ -22,7 +22,7 @@ namespace WilderMinds.RssSyndication
 
         public string Title { get; set; }
 
-        internal bool TrySerialize(out XElement item)
+        internal bool TrySerialize(FeedType type, out XElement item)
         {
             item = null;
 
@@ -31,28 +31,50 @@ namespace WilderMinds.RssSyndication
                 return false;
             }
 
-            item = new XElement("item");
+            item = new XElement(type.GetTypedName("entry", "item"));
 
-            item.AddOptionalElement("title", Title);
-            item.AddOptionalElement("link", Link?.AbsoluteUri);
-            item.AddOptionalElement("description", Body);
+            item.AddOptionalElement(type.GetTypedName("title"), Title);
+
+            if (type == FeedType.Atom1)
+            {
+                if (!string.IsNullOrWhiteSpace(Body))
+                {
+                    var contentType = Body.Contains("<") ? "html" : "text";
+
+                    var contentElement = new XElement(Feed.AtomNamespace + "content", new XAttribute("type", contentType), Body);
+
+                    item.Add(contentElement);
+                }
+            }
+            else
+            {
+                item.AddOptionalElement("description", Body);
+            }
+
+            if (Link != null)
+            {
+                item.Add(type.GetTypedLinkElement("link", Link));
+
+                if (type == FeedType.Atom1)
+                {
+                    item.Add(new XElement(type.GetTypedName("id"), Link.AbsoluteUri));
+                }
+            }
 
             if (Author != null)
             {
-                item.Add(new XElement("author", $"{Author.Email} ({Author.Name})"));
+                item.Add(Author.Serialize(type));
             }
 
-            if (Categories != null && Categories.Count > 0)
+            type.AddTypedCategories(item, Categories);
+
+            item.AddOptionalElement(type.GetTypedName("comments"), Comments?.AbsoluteUri);
+            item.AddOptionalElement(type.GetTypedName("id", "guid"), Permalink);
+
+            if (PublishDate != DateTime.MinValue)
             {
-              foreach (var category in Categories)
-              {
-                item.AddOptionalElement("category", category);
-              }
+                item.Add(new XElement(type.GetTypedName("updated", "pubDate"), type.GetTypedDate(PublishDate)));
             }
-
-            item.AddOptionalElement("comments", Comments?.AbsoluteUri);
-            item.AddOptionalElement("guid", Permalink);
-            item.AddOptionalElement("pubDate", PublishDate);
 
             return true;
         }

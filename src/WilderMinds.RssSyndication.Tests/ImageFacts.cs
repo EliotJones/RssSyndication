@@ -14,7 +14,7 @@ namespace RssSyndication.Tests
     {
       var feed = TestData.CreateTestFeed();
 
-      feed.ChannelInformation = new OptionalChannelInformation();
+      feed.OptionalInformation = new OptionalInformation();
 
       var doc = TestData.ReadSerialized(feed);
 
@@ -49,7 +49,7 @@ namespace RssSyndication.Tests
     {
       var feed = TestData.CreateTestFeed();
 
-      feed.ChannelInformation = new OptionalChannelInformation
+      feed.OptionalInformation = new OptionalInformation
       {
         Image = new ChannelImage(ImageUri, feed)
       };
@@ -67,6 +67,36 @@ namespace RssSyndication.Tests
       Assert.Equal(feed.Title, title);
 
       Assert.Equal(3, image.Descendants().Count());
+    }
+
+    [Fact]
+    public void ImageOptionalElementsSerialzedCorrectly()
+    {
+      const string imageDescription = "Cabbage";
+
+      var feed = TestData.CreateTestFeed();
+
+      feed.OptionalInformation = new OptionalInformation
+      {
+        Image = new ChannelImage(ImageUri, feed)
+        {
+          Width = 52,
+          Height = 25,
+          Description = imageDescription
+        }
+      };
+
+      var doc = TestData.ReadSerialized(feed);
+
+      var image = doc.Descendants("image").Single();
+
+      var width = image.Descendants("width").Single().Value;
+      var height = image.Descendants("height").Single().Value;
+      var description = image.Descendants("description").Single().Value;
+
+      Assert.Equal("52", width);
+      Assert.Equal("25", height);
+      Assert.Equal(imageDescription, description);
     }
 
     private static void ThrowsArgumentNull(Action action)

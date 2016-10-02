@@ -4,7 +4,7 @@ using System.Xml.Linq;
 
 namespace WilderMinds.RssSyndication.Channel
 {
-    public class OptionalChannelInformation
+    public class OptionalInformation
     {
         /// <summary> 
         /// Copyright notice for the contents of the feed.
@@ -78,45 +78,48 @@ namespace WilderMinds.RssSyndication.Channel
         /// </example>
         public Cloud Cloud { get; set; }
 
-        internal void AddOptionalElements(XElement channel)
+        /// <summary>
+        /// The author of the feed for ATOM 1.0 feeds.
+        /// </summary>
+        public Author Author { get; set; }
+
+        internal void AddOptionalElements(FeedType type, XElement channel)
         {
-            channel.AddOptionalElement("copyright", Copyright);
-            channel.AddOptionalElement("language", Language);
-            channel.AddOptionalElement("pubDate", PubDate);
-            channel.AddOptionalElement("buildDate", BuildDate);
-            channel.AddOptionalElement("managingEditor", ManagingEditor);
-            channel.AddOptionalElement("webMaster", WebMaster);
+            channel.AddOptionalElement(type.GetTypedName("generator"), Generator);
+            channel.AddOptionalElement(type.GetTypedName("rights", "copyright"), Copyright);
 
-            if (TimeToLive > 0)
+            // Rss specific elements
+            if (type != FeedType.Atom1)
             {
-                channel.AddOptionalElement("ttl", TimeToLive);
-            }
+                channel.AddOptionalElement("language", Language);
+                channel.AddOptionalElement("pubDate", PubDate);
+                channel.AddOptionalElement("buildDate", BuildDate);
+                channel.AddOptionalElement("managingEditor", ManagingEditor);
+                channel.AddOptionalElement("webMaster", WebMaster);
+                channel.AddOptionalElement("docs", Docs);
 
-            channel.AddOptionalElement("docs", Docs);
-            channel.AddOptionalElement("generator", Generator);
+                if (TimeToLive > 0)
+                {
+                    channel.AddOptionalElement("ttl", TimeToLive);
+                }
+
+                if (TextInput != null)
+                {
+                    channel.Add(TextInput.Serialize());
+                }
+
+                if (Cloud != null)
+                {
+                    channel.Add(Cloud.Serialize());
+                }
+            }
 
             if (Image != null)
             {
-                channel.Add(Image.Serialize());
+                channel.Add(Image.Serialize(type));
             }
 
-            if (TextInput != null)
-            {
-                channel.Add(TextInput.Serialize());
-            }
-
-            if (Cloud != null)
-            {
-                channel.Add(Cloud.Serialize());
-            }
-
-            if (Categories != null && Categories.Count > 0)
-            {
-                foreach (var category in Categories)
-                {
-                    channel.AddOptionalElement("category", category);
-                }
-            }
+            type.AddTypedCategories(channel, Categories);
         }
     }
 }
